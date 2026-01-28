@@ -1,21 +1,26 @@
 import { auth } from "@/lib/auth";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 export default async function authMiddleware(request: NextRequest) {
+  // Get the Session
   const session = await auth.api.getSession({
     headers: request.headers,
   });
 
-  const isTryingToAccessAdmin = request.nextUrl.pathname.startsWith("/admin");
+  const { pathname } = request.nextUrl;
 
-  if (isTryingToAccessAdmin) {
-    if (!session) {
+  // Protect Admin Routes
+  if (pathname.startsWith("/admin")) {
+    if (!session || session.user.role !== "admin") {
+      // Redirect to home or sign-in
       return NextResponse.redirect(new URL("/sign-in", request.url));
     }
+  }
 
-    if (session.user.role !== "admin") {
-      return NextResponse.redirect(new URL("/", request.url));
+  // Protect Customer Routes
+  if (pathname.startsWith("/orders")) {
+    if (!session) {
+      return NextResponse.redirect(new URL("/sign-in", request.url));
     }
   }
 
@@ -23,5 +28,5 @@ export default async function authMiddleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/orders/:path*"],
 };
