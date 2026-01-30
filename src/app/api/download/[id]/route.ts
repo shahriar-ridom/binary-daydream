@@ -8,9 +8,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  // 1. Update Type: params is a Promise now
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const verificationId = params.id;
+  // 2. Await the params
+  const { id } = await params;
+  const verificationId = id;
 
   const [verification] = await db
     .select()
@@ -28,10 +31,8 @@ export async function GET(
     return new NextResponse("Link Expired", { status: 410 });
   }
 
-  // Extract extension from the ACTUAL stored file path
+  // Handle Extension logic
   const fileExtension = product.filePath.split(".").pop();
-
-  // Sanitize the Product Name for the Filename Header
   const safeFileName = product.name.replace(/[^a-zA-Z0-9-_ ]/g, "");
 
   const command = new GetObjectCommand({

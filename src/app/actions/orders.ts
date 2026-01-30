@@ -13,16 +13,16 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 export async function createCheckoutSession(productId: number) {
-  // Authentication Check
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
+  // 1. Specific Auth Check
   if (!session?.user) {
-    return { error: "Unauthorized. Please log in first." };
+    // Return a specific object so the frontend knows EXACTLY what to do
+    return { error: "unauthorized" };
   }
 
-  // Fetch Product Details from YOUR Database
   const [product] = await db
     .select()
     .from(products)
@@ -33,7 +33,6 @@ export async function createCheckoutSession(productId: number) {
     return { error: "Product not found" };
   }
 
-  // Create Stripe Session
   const stripeSession = await stripe.checkout.sessions.create({
     success_url: `${process.env.NEXT_PUBLIC_APP_URL}/orders?success=true`,
     cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/products/${product.id}?canceled=true`,
@@ -50,8 +49,6 @@ export async function createCheckoutSession(productId: number) {
           currency: "usd",
           product_data: {
             name: product.name,
-            description: product.description || undefined,
-            images: [product.imagePath],
           },
           unit_amount: product.priceInCents,
         },
@@ -59,7 +56,6 @@ export async function createCheckoutSession(productId: number) {
     ],
   });
 
-  // Redirect User
   if (!stripeSession.url) {
     return { error: "Failed to create checkout session" };
   }
